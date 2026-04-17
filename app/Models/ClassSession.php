@@ -6,13 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class ClassSession extends Model
 {
-public function class()
-{
-    return $this->belongsTo(Classes::class);
-}
+protected $fillable = [
+    'class_id',
+    'start_time',
+    'end_time',
+    'teacher_id'
+];
 
-public function teacher()
-{
-    return $this->belongsTo(Teacher::class);
-}
 }

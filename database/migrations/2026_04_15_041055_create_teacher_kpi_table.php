@@ -20,6 +20,9 @@ return new class extends Migration
     $table->integer('year');
 
     // 🔢 scores
+    $table->enum('category', ['A', 'B', 'C'])->nullable();
+    $table->text('notes')->nullable(); // optional admin notes
+
     $table->decimal('feedback_score', 5, 2)->default(0);
     $table->decimal('attendance_score', 5, 2)->default(0);
     $table->decimal('availability_score', 5, 2)->default(0);

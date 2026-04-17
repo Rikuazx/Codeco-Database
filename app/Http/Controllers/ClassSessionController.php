@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Classes;
 use App\Models\ClassSession;
 use Carbon\Carbon;
-
+use App\Models\Feedback;
 
 class ClassSessionController extends Controller
 {
@@ -28,9 +28,10 @@ class ClassSessionController extends Controller
             ]);
         }
 
-        return response()->json([
-            'message' => 'Sessions generated'
-        ]);
+          return response()->json([
+        'message' => 'Session generated',
+        'class_id' => $class_id
+    ]);
     }
 
     public function assignTeacher(Request $request)
@@ -40,13 +41,42 @@ class ClassSessionController extends Controller
         'teacher_id' => 'required|exists:teachers,id',
     ]);
 
-    $session = \App\Models\ClassSession::findOrFail($request->session_id);
+    $session = ClassSession::findOrFail($request->session_id);
 
     $session->teacher_id = $request->teacher_id;
     $session->save();
 
     return response()->json([
         'message' => 'Teacher assigned successfully',
+        'data' => $session
+    ]);
+}
+public function complete($id)
+{
+    $session = ClassSession::findOrFail($id);
+
+    // ❗ Check if already completed
+    if ($session->status === 'completed') {
+        return response()->json([
+            'error' => 'Session already completed'
+        ], 400);
+    }
+
+    // ❗ Check feedback exists
+    $feedbackExists = Feedback::where('class_session_id', $session->id)->exists();
+
+    if (!$feedbackExists) {
+        return response()->json([
+            'error' => 'Cannot complete session without feedback'
+        ], 400);
+    }
+
+    // ✅ Mark completed
+    $session->status = 'completed';
+    $session->save();
+
+    return response()->json([
+        'message' => 'Session completed successfully',
         'data' => $session
     ]);
 }
