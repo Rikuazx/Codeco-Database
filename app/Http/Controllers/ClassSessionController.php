@@ -7,32 +7,39 @@ use App\Models\Classes;
 use App\Models\ClassSession;
 use Carbon\Carbon;
 use App\Models\Feedback;
-
+use App\Models\Teacher;
 class ClassSessionController extends Controller
 {
-    public function generateSessions($class_id)
-    {
-        $class = Classes::findOrFail($class_id);
+public function generateSessions($class_id)
+{
+    $class = Classes::findOrFail($class_id);
 
-        $startDate = Carbon::now();
-        $total = $class->total_session;
 
-        for ($i = 1; $i <= $total; $i++) {
-            ClassSession::create([
-                'class_id' => $class->id,
-                'session_number' => $i,
-                'session_date' => $startDate->copy()->addDays($i * 2),
-                'start_time' => '10:00:00',
-                'end_time' => '12:00:00',
-                'status' => 'scheduled',
-            ]);
-        }
+    $existing = ClassSession::where('class_id', $class_id)->exists();
 
-          return response()->json([
+    if ($existing) {
+        return response()->json([
+         'error' => 'Sessions already generated for this class'
+    ], 400);
+}
+
+    $startDate = now();
+    $total = $class->total_sessions;
+
+    for ($i = 1; $i <= $total; $i++) {
+        ClassSession::create([
+            'class_id' => $class->id,
+            'start_time' => $startDate->copy()->addDays($i * 2)->setTime(10, 0),
+            'end_time' => $startDate->copy()->addDays($i * 2)->setTime(12, 0),
+            'status' => 'scheduled',
+        ]);
+    }
+
+    return response()->json([
         'message' => 'Session generated',
         'class_id' => $class_id
     ]);
-    }
+}
 
     public function assignTeacher(Request $request)
 {
@@ -53,31 +60,75 @@ class ClassSessionController extends Controller
 }
 public function complete($id)
 {
+    try {
+        $session = ClassSession::findOrFail($id);
+
+        $feedbackExists = Feedback::where('class_session_id', $session->id)->exists();
+
+        if (!$feedbackExists) {
+            return response()->json([
+                'error' => 'Cannot complete session without feedback'
+            ], 400);
+        }
+
+        $session->status = 'completed';
+        $session->save();
+
+        return response()->json([
+            'message' => 'Session completed successfully',
+            'data' => $session
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+public function autoAssignTeacher($id)
+{
     $session = ClassSession::findOrFail($id);
 
-    // ❗ Check if already completed
-    if ($session->status === 'completed') {
+    //  Prevent re-assign
+    if ($session->teacher_id) {
         return response()->json([
-            'error' => 'Session already completed'
+            'error' => 'Teacher already assigned'
         ], 400);
     }
 
-    // ❗ Check feedback exists
-    $feedbackExists = Feedback::where('class_session_id', $session->id)->exists();
+    //  Find available teacher
+    $teacher = Teacher::whereHas('availabilities', function ($q) use ($session) {
+        $q->where('date', Carbon::parse($session->start_time)->toDateString())
+          ->where('is_available', true)
+          ->where(function ($q2) use ($session) {
+              $q2->where('is_full_day', true)
+                 ->orWhere(function ($q3) use ($session) {
+                     $q3->where('start_time', '<=', $session->start_time)
+                        ->where('end_time', '>=', $session->end_time);
+                 });
+          });
+    })
+    //  Prevent time conflict
+    ->whereDoesntHave('classSessions', function ($q) use ($session) {
+        $q->whereBetween('start_time', [$session->start_time, $session->end_time]);
+    })
+    ->first();
 
-    if (!$feedbackExists) {
+    if (!$teacher) {
         return response()->json([
-            'error' => 'Cannot complete session without feedback'
+            'error' => 'No available teacher found'
         ], 400);
     }
 
-    // ✅ Mark completed
-    $session->status = 'completed';
-    $session->save();
+    // ✅ Assign teacher
+    $session->update([
+        'teacher_id' => $teacher->id
+    ]);
 
     return response()->json([
-        'message' => 'Session completed successfully',
-        'data' => $session
+        'message' => 'Teacher assigned successfully',
+        'teacher_id' => $teacher->id
     ]);
 }
 }

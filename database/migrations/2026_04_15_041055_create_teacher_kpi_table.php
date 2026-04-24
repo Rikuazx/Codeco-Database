@@ -19,7 +19,7 @@ return new class extends Migration
     $table->integer('month'); // 1–12
     $table->integer('year');
 
-    // 🔢 scores
+    //  scores
     $table->enum('category', ['A', 'B', 'C'])->nullable();
     $table->text('notes')->nullable(); // optional admin notes
 

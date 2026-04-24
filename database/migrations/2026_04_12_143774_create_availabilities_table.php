@@ -15,20 +15,24 @@ return new class extends Migration
     $table->id();
     $table->foreignId('teacher_id')->constrained()->onDelete('cascade');
 
-    // 🧠 2-week period
+    //  2-week period
     $table->date('period_start');
     $table->date('period_end');
 
-    // 🧠 availability type
+    //  availability type
     $table->enum('type', ['time_range', 'full_day', 'unavailable']);
 
-    // 🧠 optional time range
+    //  optional time range
     $table->time('start_time')->nullable();
     $table->time('end_time')->nullable();
 
     $table->timestamp('submitted_at')->nullable();
 
     $table->timestamps();
+    /* Temporary fix: add date column for easier querying, will be removed in future refactor */
+      Schema::table('teacher_availabilities', function (Blueprint $table) {
+            $table->date('date')->after('teacher_id');
+        });
 });
     }
 
@@ -37,6 +41,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('availabilities');
+          Schema::table('teacher_availabilities', function (Blueprint $table) {
+            $table->dropColumn('date');
+        });
+          Schema::dropIfExists('availabilities');
     }
 };

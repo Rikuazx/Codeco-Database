@@ -3,11 +3,12 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Feedback;
+use App\Models\feedback;
 
 
-class FeedbackController extends Controller
+class feedbackController extends Controller
 {
+    
    public function store(Request $request)
 {
     $request->validate([
@@ -18,15 +19,15 @@ class FeedbackController extends Controller
         'comment' => 'nullable|string',
     ]);
 
-    // ❗ prevent empty feedback
+    // prevent empty feedback
     if (!$request->rating && !$request->comment) {
         return response()->json([
-            'error' => 'Feedback cannot be empty'
+            'error' => 'feedback cannot be empty'
         ], 400);
     }
 
-    // ❗ prevent duplicate feedback per session
-    $exists = Feedback::where('class_session_id', $request->class_session_id)
+    // prevent duplicate feedback per session
+    $exists = feedback::where('class_session_id', $request->class_session_id)
         ->where('teacher_id', $request->teacher_id)
         ->exists();
 
@@ -36,7 +37,7 @@ class FeedbackController extends Controller
         ], 400);
     }
 
-    $feedback = Feedback::create([
+    $feedback = feedback::create([
         'teacher_id' => $request->teacher_id,
         'student_id' => $request->student_id,
         'class_session_id' => $request->class_session_id,
@@ -45,6 +46,8 @@ class FeedbackController extends Controller
         'submitted_at' => now(),
     ]);
 
+    dd($feedback);
+    
     return response()->json([
         'message' => 'Feedback submitted',
         'data' => $feedback

@@ -19,7 +19,8 @@ return new class extends Migration
 
         $table->timestamp('start_time');
         $table->timestamp('end_time');
-
+        $table->enum('status', ['scheduled', 'ongoing', 'completed'])
+        ->default('scheduled');
         $table->timestamps();
     });
     }

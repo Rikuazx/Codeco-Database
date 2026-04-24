@@ -14,6 +14,7 @@ Route::post('/attendance', [AttendanceController::class, 'markAttendance']);
 Route::post('/teacher-availability', [TeacherAvailabilityController::class, 'store']);
 Route::post('/feedback', [FeedbackController::class, 'store']);
 Route::post('/sessions/{id}/complete', [ClassSessionController::class, 'complete']);
+Route::post('/sessions/{id}/auto-assign', [ClassSessionController::class, 'autoAssignTeacher']);
 
 Route::post('/assign-teacher', [ClassSessionController::class, 'assignTeacher']);
 Route::get('/user', function (Request $request) {

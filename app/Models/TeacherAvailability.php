@@ -6,14 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class TeacherAvailability extends Model
 {
-protected $fillable = [
+   protected $fillable = [
     'teacher_id',
-    'period_start',
-    'period_end',
-    'type',
+    'date',          
     'start_time',
     'end_time',
-    'submitted_at',
-];
+    'is_full_day',
+    'is_available',
+    ];
 
+    public function teacher()
+    {
+        return $this->belongsTo(Teacher::class);
+    }
 }
