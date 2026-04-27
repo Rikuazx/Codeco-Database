@@ -8,6 +8,8 @@ use App\Models\ClassSession;
 use Carbon\Carbon;
 use App\Models\Feedback;
 use App\Models\Teacher;
+use App\Models\TeacherAvailability;
+
 class ClassSessionController extends Controller
 {
 public function generateSessions($class_id)
@@ -48,16 +50,53 @@ public function generateSessions($class_id)
         'teacher_id' => 'required|exists:teachers,id',
     ]);
 
+    
     $session = ClassSession::findOrFail($request->session_id);
+ //  1. Check teacher availability
+    $available = TeacherAvailability::where('teacher_id', $request->teacher_id)
+        ->where('date', $session->start_time->toDateString())
+        ->where('is_available', true)
+        ->where(function ($q) use ($session) {
+            $q->where('is_full_day', true)
+              ->orWhere(function ($q2) use ($session) {
+                  $q2->where('start_time', '<=', $session->start_time->format('H:i:s'))
+                     ->where('end_time', '>=', $session->end_time->format('H:i:s'));
+              });
+        })
+        ->exists();
 
-    $session->teacher_id = $request->teacher_id;
-    $session->save();
+    if (!$available) {
+        return response()->json([
+            'error' => 'Teacher is not available at this time'
+        ], 400);
+    }
+
+    //  2. Prevent overlapping sessions
+    $conflict = ClassSession::where('teacher_id', $request->teacher_id)
+        ->where('id', '!=', $session->id)
+        ->where(function ($q) use ($session) {
+            $q->whereBetween('start_time', [$session->start_time, $session->end_time])
+              ->orWhereBetween('end_time', [$session->start_time, $session->end_time]);
+        })
+        ->exists();
+
+    if ($conflict) {
+        return response()->json([
+            'error' => 'Teacher already has another session at this time'
+        ], 400);
+    }
+
+    //  3. Assign teacher
+    $session->update([
+        'teacher_id' => $request->teacher_id
+    ]);
 
     return response()->json([
         'message' => 'Teacher assigned successfully',
         'data' => $session
     ]);
 }
+
 public function complete($id)
 {
     try {
@@ -121,7 +160,7 @@ public function autoAssignTeacher($id)
         ], 400);
     }
 
-    // ✅ Assign teacher
+    // Assign teacher
     $session->update([
         'teacher_id' => $teacher->id
     ]);
@@ -130,5 +169,32 @@ public function autoAssignTeacher($id)
         'message' => 'Teacher assigned successfully',
         'teacher_id' => $teacher->id
     ]);
+}
+public function update(Request $request, $id)
+{
+    $session = ClassSession::findOrFail($id);
+
+    $request->validate([
+        'start_time' => 'nullable|date',
+        'end_time' => 'nullable|date|after:start_time',
+        'teacher_id' => 'nullable|exists:teachers,id',
+        'status' => 'nullable|in:scheduled,ongoing,completed'
+    ]);
+
+    $session->update($request->only([
+        'start_time',
+        'end_time',
+        'teacher_id',
+        'status'
+    ]));
+
+    return response()->json([
+        'message' => 'Session updated',
+        'data' => $session
+    ]);
+}
+public function index()
+{
+    return ClassSession::with(['teacher', 'class'])->get();
 }
 }

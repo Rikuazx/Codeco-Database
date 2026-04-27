@@ -18,7 +18,7 @@ return new class extends Migration
     //  2-week period
     $table->date('period_start');
     $table->date('period_end');
-
+    $table->date('date')->after('teacher_id');
     //  availability type
     $table->enum('type', ['time_range', 'full_day', 'unavailable']);
 
@@ -29,8 +29,10 @@ return new class extends Migration
     $table->timestamp('submitted_at')->nullable();
 
     $table->timestamps();
-    $table->date('date')->after('teacher_id');
-        
+    /* Temporary fix: add date column for easier querying, will be removed in future refactor */
+      Schema::table('teacher_availabilities', function (Blueprint $table) {
+            $table->date('date')->after('teacher_id');
+        });
 });
     }
 
@@ -39,6 +41,9 @@ return new class extends Migration
      */
     public function down(): void
     {
+          Schema::table('teacher_availabilities', function (Blueprint $table) {
+            $table->dropColumn('date');
+        });
           Schema::dropIfExists('availabilities');
     }
 };

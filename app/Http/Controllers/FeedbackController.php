@@ -53,4 +53,8 @@ class feedbackController extends Controller
         'data' => $feedback
     ]);
 }
+public function index()
+{
+    return Feedback::all();
+}
 }

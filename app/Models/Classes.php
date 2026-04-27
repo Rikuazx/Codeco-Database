@@ -15,7 +15,10 @@ class Classes extends Model
 public function sessions()
 
 {
-    
+    return $this->hasMany(\App\Models\ClassSession::class, 'class_id');
+
     return $this->hasMany(ClassSession::class);
 }
+
+
 }
